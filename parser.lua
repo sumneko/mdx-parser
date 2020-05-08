@@ -1,10 +1,11 @@
 local l = require 'lpeglabel'
 
-local tonumber = tonumber
-local type     = type
-local assert   = assert
-local tostring = tostring
-local error    = error
+local tonumber  = tonumber
+local type      = type
+local assert    = assert
+local tostring  = tostring
+local error     = error
+local tableSort = table.sort
 
 _ENV = nil
 
@@ -55,6 +56,87 @@ local function parseMDLTokensValue(tokens, index)
     return value, index
 end
 
+local function parseMDLTokensAnimationData(tokens, index)
+    local time = tokens[index]
+    index = index + 1
+    assert(tokens[index] == ':')
+    index = index + 1
+    local value = tokens[index]
+    local data = {
+        time  = time,
+        value = value,
+    }
+    index = index + 1
+    local max = #tokens
+    while index <= max do
+        local token = tokens[index]
+        if token == ','
+        or token == '}' then
+            break
+        else
+            data[token], index = parseMDLTokensValue(tokens, index)
+        end
+    end
+    return data, index
+end
+
+local function parseMDLTokensAnimation(tokens, index)
+    local data = {}
+    local list = {}
+    data.list = list
+    index = index + 1
+    local count = tokens[index]
+    index = index + 2
+    data.type = tokens[index]
+    index = index + 1
+    local max = #tokens
+    while index <= max do
+        local token = tokens[index]
+        if token == ',' then
+            index = index + 1
+        elseif token == '}' then
+            break
+        elseif token == 'GlobalSeqId' then
+            data[token], index = parseMDLTokensValue(tokens, index)
+        else
+            list[#list+1], index = parseMDLTokensAnimationData(tokens, index)
+        end
+    end
+    assert(count == #list)
+    tableSort(list, function (a, b)
+        if a.time == b.time then
+            return a.value < b.value
+        end
+        return a.time < b.time
+    end)
+    return data, index + 1
+end
+
+local function parseMDLTokensLayer(tokens, index)
+    local layer = {}
+    index = index + 1
+    assert(tokens[index] == '{')
+    index = index + 1
+    local max = #tokens
+    while index <= max do
+        local token = tokens[index]
+        assert(token ~= '{')
+        if token == ',' then
+            index = index + 1
+        elseif token == '}' then
+            break
+        elseif token == 'Alpha'
+        or     token == 'EmissiveGain' then
+            layer[token], index = parseMDLTokensAnimation(tokens, index)
+        elseif token == 'static' then
+            index = index + 1
+        else
+            layer[token], index = parseMDLTokensValue(tokens, index)
+        end
+    end
+    return layer, index + 1
+end
+
 local function parseMDLTokensStruct(tokens, index)
     local struct = {}
     index = index + 1
@@ -79,7 +161,35 @@ local function parseMDLTokensStruct(tokens, index)
     return struct, index + 1
 end
 
-local function parseMDLTokensArray(tokens, index, key)
+local function parseMDLTokensMaterial(tokens, index)
+    local struct = {}
+    local layers = {}
+    struct.layers = layers
+    index = index + 1
+    local token = tokens[index]
+    if token ~= '{' then
+        struct.name = token
+        index = index + 1
+    end
+    assert(tokens[index] == '{')
+    index = index + 1
+    local max = #tokens
+    while index <= max do
+        local token = tokens[index]
+        if token == ',' then
+            index = index + 1
+        elseif token == '}' then
+            break
+        elseif token == 'Layer' then
+            layers[#layers+1], index = parseMDLTokensLayer(tokens, index)
+        else
+            struct[token], index = parseMDLTokensValue(tokens, index)
+        end
+    end
+    return struct, index + 1
+end
+
+local function parseMDLTokensArray(tokens, index, key, callback)
     local array = {}
     index = index + 1
     local count = tokens[index]
@@ -91,7 +201,7 @@ local function parseMDLTokensArray(tokens, index, key)
             break
         else
             assert(token == key)
-            array[#array+1], index = parseMDLTokensStruct(tokens, index)
+            array[#array+1], index = callback(tokens, index)
         end
     end
     assert(count == #array)
@@ -115,9 +225,11 @@ local function parseMDLTokens(tokens)
         elseif token == 'Model' then
             model[token], index = parseMDLTokensStruct(tokens, index)
         elseif token == 'Sequences' then
-            model[token], index = parseMDLTokensArray(tokens, index, 'Anim')
+            model[token], index = parseMDLTokensArray(tokens, index, 'Anim'    , parseMDLTokensStruct)
         elseif token == 'Textures' then
-            model[token], index = parseMDLTokensArray(tokens, index, 'Bitmap')
+            model[token], index = parseMDLTokensArray(tokens, index, 'Bitmap'  , parseMDLTokensStruct)
+        elseif token == 'Materials' then
+            model[token], index = parseMDLTokensArray(tokens, index, 'Material', parseMDLTokensMaterial)
         else
             error('Unknown token!')
         end
