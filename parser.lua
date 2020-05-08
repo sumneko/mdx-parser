@@ -45,6 +45,9 @@ local function parseMDLTokensValue(tokens, index)
     local token = tokens[index]
     if token == '{' then
         value, index = parseMDLTokensSimpleTable(tokens, index)
+    elseif token == '}'
+    or     token == ',' then
+        value = true
     else
         value = token
         index = index + 1
@@ -52,11 +55,14 @@ local function parseMDLTokensValue(tokens, index)
     return value, index
 end
 
-local function parseMDLTokensModel(tokens, index)
-    local model = {}
+local function parseMDLTokensStruct(tokens, index)
+    local struct = {}
     index = index + 1
-    model.name = tokens[index]
-    index = index + 1
+    local token = tokens[index]
+    if token ~= '{' then
+        struct.name = token
+        index = index + 1
+    end
     assert(tokens[index] == '{')
     index = index + 1
     local max = #tokens
@@ -67,10 +73,33 @@ local function parseMDLTokensModel(tokens, index)
         elseif token == '}' then
             break
         else
-            model[token], index = parseMDLTokensValue(tokens, index)
+            struct[token], index = parseMDLTokensValue(tokens, index)
         end
     end
-    return model, index + 1
+    return struct, index + 1
+end
+
+local function parseMDLTokensArray(tokens, index, key)
+    local array = {}
+    index = index + 1
+    local count = tokens[index]
+    index = index + 2
+    local max = #tokens
+    while index <= max do
+        local token = tokens[index]
+        if token == '}' then
+            break
+        else
+            assert(token == key)
+            array[#array+1], index = parseMDLTokensStruct(tokens, index)
+        end
+    end
+    assert(count == #array)
+    return array, index + 1
+end
+
+local function parseMDLTokensVersion(tokens, index)
+    return tokens[index + 3], index + 4
 end
 
 local function parseMDLTokens(tokens)
@@ -82,11 +111,13 @@ local function parseMDLTokens(tokens)
         if token == ',' or token == '}' then
             index = index + 1
         elseif token == 'Version' then
-            index = index + 3
-            model.version = tokens[index]
-            index = index + 1
+            model[token], index = parseMDLTokensVersion(tokens, index)
         elseif token == 'Model' then
-            model.Model, index = parseMDLTokensModel(tokens, index)
+            model[token], index = parseMDLTokensStruct(tokens, index)
+        elseif token == 'Sequences' then
+            model[token], index = parseMDLTokensArray(tokens, index, 'Anim')
+        elseif token == 'Textures' then
+            model[token], index = parseMDLTokensArray(tokens, index, 'Bitmap')
         else
             error('Unknown token!')
         end
