@@ -9,6 +9,7 @@
             "request": "launch",
             "name": "Launch",
             "program": "${workspaceFolder}/test/main.lua",
+            "stopOnEntry": false,
             "luaArch": "x86_64",
             "luaVersion": "5.4",
             "path": "${workspaceFolder}/?.lua;${workspaceFolder}/?/init.lua",
