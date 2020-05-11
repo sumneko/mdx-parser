@@ -82,6 +82,9 @@ local NeedCommaKey = {
     Triangles    = false,
     SkinWeights  = false,
     SegmentColor = true,
+    Anim         = false,
+    Particle     = false,
+    Target       = false,
 }
 
 local encodeValue
