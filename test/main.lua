@@ -17,6 +17,7 @@ for path in fsu.scan(mdlDir) do
     local newBuf = parser.mdl.encode(model)
     fsu.saveFile(tempDir / path, newBuf)
     local newModel = parser.mdl.decode(newBuf)
+    assert(buf == newBuf)
     if not util.equal(model, newModel) then
         fsu.saveFile(tempDir / path:stem() .. '_old.lua', util.dump(model))
         fsu.saveFile(tempDir / path:stem() .. '_new.lua', util.dump(newModel))
