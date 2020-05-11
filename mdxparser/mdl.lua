@@ -74,6 +74,9 @@ end
 local encodeValue
 local function encodeState(buf, state, tab)
     buf[#buf+1] = Tab[tab]
+    if state.static then
+        buf[#buf+1] = 'static '
+    end
     buf[#buf+1] = state.key
     if state.attribute then
         encodeAttribute(buf, state.attribute)

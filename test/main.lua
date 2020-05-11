@@ -9,13 +9,18 @@ local tempDir = root / 'temp'
 
 fs.create_directories(mdlDir)
 fs.create_directories(tempDir)
-for path in fsu.scan(mdxDir) do
-    --local buf1 = fsu.loadFile(mdxDir / path)
-    local buf2 = fsu.loadFile(mdlDir / (path:stem() .. '.mdl'))
-    --local model1 = parser.mdx.decode(buf1)
-    local model2 = parser.mdl.decode(buf2)
-    --assert(util.equal(model1, model2))
-    local mdlBuf = parser.mdl.encode(model2)
-    fsu.saveFile(tempDir / (path:stem() .. '.mdl'), mdlBuf)
+
+-- 先测试 mdl 的自我编码解码
+for path in fsu.scan(mdlDir) do
+    local buf = fsu.loadFile(mdlDir / path)
+    local model = parser.mdl.decode(buf)
+    local newBuf = parser.mdl.encode(model)
+    fsu.saveFile(tempDir / path, newBuf)
+    local newModel = parser.mdl.decode(newBuf)
+    if not util.equal(model, newModel) then
+        fsu.saveFile(tempDir / path:stem() .. '_old.lua',util.dump(model))
+        fsu.saveFile(tempDir / path:stem() .. '_new.lua',util.dump(newModel))
+        error('MDL test failed!')
+    end
 end
-print(1)
+print('Test OK!')
