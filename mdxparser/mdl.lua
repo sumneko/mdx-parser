@@ -77,24 +77,34 @@ local function encodeAttribute(buf, attributes)
     end
 end
 
+local StructKey = {
+    VertexGroup = true,
+    Triangles   = true,
+    SkinWeights = true,
+}
+
 local encodeValue
-local function encodeState(buf, state, tab)
+local function encodeState(buf, pkey, state, tab)
     local key = state.key
-    local isStruct
+    local isStruct = StructKey[key] == true
     buf[#buf+1] = Tab[tab]
-    if state.static then
-        buf[#buf+1] = 'static '
-    end
-    buf[#buf+1] = key
-    if state.attribute then
-        encodeAttribute(buf, state.attribute)
-    end
-    if state.value then
-        buf[#buf+1] = ' '
-        encodeValue(buf, key, state.value, tab)
-        if type(state.value) == 'table' and state.value[1] == 'Struct' then
-            isStruct = true
+    if key then
+        if state.static then
+            buf[#buf+1] = 'static '
         end
+        buf[#buf+1] = key
+        if state.attribute then
+            encodeAttribute(buf, state.attribute)
+        end
+        if state.value then
+            buf[#buf+1] = ' '
+            encodeValue(buf, key, state.value, tab)
+            if type(state.value) == 'table' and state.value[1] == 'Struct' then
+                isStruct = true
+            end
+        end
+    else
+        encodeValue(buf, pkey, state, tab)
     end
     if isStruct then
         buf[#buf+1] = '\r\n'
@@ -108,13 +118,13 @@ local function encodeTable(buf, key, value, tab)
     if mode == 'Struct' then
         buf[#buf+1] = '{\r\n'
         for i = 2, #value do
-            encodeState(buf, value[i], tab + 1)
+            encodeState(buf, key, value[i], tab + 1)
         end
         buf[#buf+1] = Tab[tab]
         buf[#buf+1] = '}'
     elseif mode == 'Array' then
         if tonumber(value[2]) then
-            if key == '' then
+            if key == 'SkinWeights' then
                 buf[#buf+1] = '{\r\n'
                 for i = 2, #value do
                     if i % 8 == 2 then
@@ -164,7 +174,7 @@ end
 local function encode(model)
     local buf = {}
     for _, chunk in ipairs(model) do
-        encodeState(buf, chunk, 0)
+        encodeState(buf, 'ROOT', chunk, 0)
     end
     return tableConcat(buf)
 end
