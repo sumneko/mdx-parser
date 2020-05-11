@@ -18,9 +18,24 @@ for path in fsu.scan(mdlDir) do
     fsu.saveFile(tempDir / path, newBuf)
     local newModel = parser.mdl.decode(newBuf)
     if not util.equal(model, newModel) then
-        fsu.saveFile(tempDir / path:stem() .. '_old.lua',util.dump(model))
-        fsu.saveFile(tempDir / path:stem() .. '_new.lua',util.dump(newModel))
+        fsu.saveFile(tempDir / path:stem() .. '_old.lua', util.dump(model))
+        fsu.saveFile(tempDir / path:stem() .. '_new.lua', util.dump(newModel))
         error('MDL test failed!')
     end
 end
+
+-- 测试 mdx 转 mdl
+--for path in fsu.scan(mdlDir) do
+--    local mdxPath = mdxDir / (path:stem() .. '.mdx')
+--    local mdlBuf = fsu.loadFile(mdlDir / path)
+--    local mdxBuf = fsu.loadFile(mdxPath)
+--    local mdlModel = parser.mdl.decode(mdlBuf)
+--    local mdxModel = parser.mdl.encode(mdxBuf)
+--    if not util.equal(mdlModel, mdxModel) then
+--        fsu.saveFile(tempDir / path:stem() .. '_mdl.lua', util.dump(mdlModel))
+--        fsu.saveFile(tempDir / path:stem() .. '_mdx.lua', util.dump(mdxModel))
+--        error('MDL test failed!')
+--    end
+--end
+
 print('Test OK!')

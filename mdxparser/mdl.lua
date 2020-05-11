@@ -44,12 +44,16 @@ local mdlParser = l.P {
     Token   = l.V'Space' + l.V'State' + l.V'Value',
     Space   = l.S' \t\r\n'^1 + l.V'Comment',
     Empty   = l.V'Space'^0,
-    State   = (l.C(l.P'static') + l.Cc(nil)) * l.V'Empty' * l.V'Word' * l.V'Empty' * ((l.V'String' + l.V'Number') * l.V'Empty')^0 * l.V'Value'^-1 / State,
-    Value   = l.V'Word' + l.V'String' + l.V'Array' + l.V'Struct' + l.V'NumPair' + l.V'Number',
+    Attr    = l.V'Empty' * (l.V'String' + l.V'Number') * l.V'Empty',
+    Static  = l.V'Empty' * (l.C(l.P'static') + l.Cc(nil)) * l.V'Empty',
+    Key     = l.V'Empty' * l.V'Word' * l.V'Empty',
+    State   = l.V'Static' * l.V'Key' * l.V'Attr'^1 * l.V'Struct' / State
+            + l.V'Static' * l.V'Key' * (l.V'Value' + l.V'Struct')^-1 / State
+            + l.V'Static' * l.V'Number' * l.V'Empty' * l.C(l.P':') * l.V'Empty' * l.V'Value' / State,
+    Value   = l.V'Word' + l.V'String' + l.V'Array' + l.V'Number',
     Seg     = l.V'Empty' * l.P',' * l.V'Empty',
     Comment = l.P'//' * (1 - l.S'\r\n')^0,
     Number  = l.C(l.P'-'^-1 * l.R'09'^1 * l.V'Decimal'^-1),
-    NumPair = l.Ct(l.Cc'NumPair' * l.V'Number' * l.V'Space'^-1 * l.P':' * l.V'Space'^-1 * (l.V'Number' + l.V'Array')),
     Decimal = l.P'.' * l.R'09'^0,
     String  = l.C(l.P'"' * (1 - l.P'"')^0 * l.P'"'),
     Char    = l.R('az', 'AZ', '09', '__'),
@@ -58,7 +62,7 @@ local mdlParser = l.P {
     Array   = l.Ct(l.Cc'Array' * l.P'{'
                 * (l.V'Afield' * l.V'Seg')^0 * l.V'Afield'^-1
             * l.V'Empty' * l.P'}'),
-    Sfield  = l.V'Empty' * l.V'State' * l.V'Empty',
+    Sfield  = l.V'Empty' * (l.V'State' + l.V'Value') * l.V'Empty',
     Struct  = l.Ct(l.Cc'Struct' * l.P'{'
                 * (l.V'Sfield' * l.V'Seg'^-1 + #(1 - l.P'}') * l.T'Unknown')^0
             * l.V'Empty' * l.P'}'),
@@ -66,56 +70,92 @@ local mdlParser = l.P {
 
 local function encodeAttribute(buf, attributes)
     for i = 1, #attributes do
-        buf[#buf+1] = ' '
-        buf[#buf+1] = attributes[i]
+        if attributes[i] ~= ':' then
+            buf[#buf+1] = ' '
+        end
+            buf[#buf+1] = attributes[i]
     end
 end
 
 local encodeValue
 local function encodeState(buf, state, tab)
+    local key = state.key
+    local isStruct
     buf[#buf+1] = Tab[tab]
     if state.static then
         buf[#buf+1] = 'static '
     end
-    buf[#buf+1] = state.key
+    buf[#buf+1] = key
     if state.attribute then
         encodeAttribute(buf, state.attribute)
     end
     if state.value then
-        encodeValue(buf, state.value, tab)
+        buf[#buf+1] = ' '
+        encodeValue(buf, key, state.value, tab)
+        if type(state.value) == 'table' and state.value[1] == 'Struct' then
+            isStruct = true
+        end
+    end
+    if isStruct then
+        buf[#buf+1] = '\r\n'
+    else
+        buf[#buf+1] = ',\r\n'
     end
 end
 
-local function encodeTable(buf, value, tab)
+local function encodeTable(buf, key, value, tab)
     local mode = value[1]
     if mode == 'Struct' then
         buf[#buf+1] = '{\r\n'
         for i = 2, #value do
             encodeState(buf, value[i], tab + 1)
-            buf[#buf+1] = ',\r\n'
         end
         buf[#buf+1] = Tab[tab]
         buf[#buf+1] = '}'
     elseif mode == 'Array' then
-        buf[#buf+1] = '{'
-        for i = 2, #value do
-            encodeValue(buf, value[i], tab)
-            if i < #value then
-                buf[#buf+1] = ','
+        if tonumber(value[2]) then
+            if key == '' then
+                buf[#buf+1] = '{\r\n'
+                for i = 2, #value do
+                    if i % 8 == 2 then
+                        buf[#buf+1] = Tab[tab + 1]
+                    end
+                    encodeValue(buf, key, value[i], tab + 1)
+                    if i % 8 == 1 then
+                        buf[#buf+1] = ', \r\n'
+                    else
+                        buf[#buf+1] = ', '
+                    end
+                end
+                buf[#buf+1] = Tab[tab]
+                buf[#buf+1] = '}'
+            else
+                buf[#buf+1] = '{'
+                for i = 2, #value do
+                    buf[#buf+1] = ' '
+                    encodeValue(buf, key, value[i], tab)
+                    if i < #value then
+                        buf[#buf+1] = ','
+                    end
+                end
+                buf[#buf+1] = ' }'
             end
+        else
+            buf[#buf+1] = '{\r\n'
+            for i = 2, #value do
+                buf[#buf+1] = Tab[tab + 1]
+                encodeValue(buf, key, value[i], tab + 1)
+                buf[#buf+1] = ',\r\n'
+            end
+            buf[#buf+1] = Tab[tab]
+            buf[#buf+1] = '}'
         end
-        buf[#buf+1] = ' }'
-    elseif mode == 'NumPair' then
-        buf[#buf+1] = value[2]
-        buf[#buf+1] = ': '
-        encodeValue(buf, value[3], tab)
     end
 end
 
-function encodeValue(buf, value, tab)
-    buf[#buf+1] = ' '
+function encodeValue(buf, key, value, tab)
     if type(value) == 'table' then
-        encodeTable(buf, value, tab)
+        encodeTable(buf, key, value, tab)
     else
         buf[#buf+1] = value
     end
@@ -125,7 +165,6 @@ local function encode(model)
     local buf = {}
     for _, chunk in ipairs(model) do
         encodeState(buf, chunk, 0)
-        buf[#buf+1] = '\r\n'
     end
     return tableConcat(buf)
 end
