@@ -165,6 +165,8 @@ local function parseMDLTokensStruct(tokens, index)
         local token = tokens[index]
         if token == ',' then
             index = index + 1
+        elseif token == 'static' then
+            index = index + 1
         elseif token == '}' then
             break
         else
@@ -203,19 +205,29 @@ end
 
 local function parseMDLTokensArray(tokens, index, key, callback)
     local array = {}
-    local count = tokens[index]
-    index = index + 2
+    local token = tokens[index]
+    local count
+    if type(token) == 'number' then
+        count = token
+        index = index + 1
+    end
+    assert(tokens[index] == '{')
+    index = index + 1
     local max = #tokens
     while index <= max do
         local token = tokens[index]
         if token == '}' then
             break
+        elseif token == ',' then
+            index = index + 1
         else
             assert(token == key)
             array[#array+1], index = callback(tokens, index + 1)
         end
     end
-    assert(count == #array)
+    if count then
+        assert(count == #array)
+    end
     return array, index + 1
 end
 
@@ -356,8 +368,67 @@ local function parseMDLTokensBone(tokens, index)
             break
         elseif token == 'Translation'
         or     token == 'Rotation'
-        or     token == 'Scaling' then
+        or     token == 'Scaling'
+        or     token == 'Visibility' then
             struct[token], index = parseMDLTokensAnimation(tokens, index + 1)
+        else
+            struct[token], index = parseMDLTokensValue(tokens, index + 1)
+        end
+    end
+    return struct, index + 1
+end
+
+local function parseMDLTokensAttachment(tokens, index)
+    local struct = {}
+    local token = tokens[index]
+    struct.name = token
+    index = index + 1
+    assert(tokens[index] == '{')
+    index = index + 1
+    local max = #tokens
+    while index <= max do
+        local token = tokens[index]
+        if token == ',' then
+            index = index + 1
+        elseif token == '}' then
+            break
+        elseif token == 'Translation'
+        or     token == 'Rotation'
+        or     token == 'Scaling'
+        or     token == 'Visibility' then
+            struct[token], index = parseMDLTokensAnimation(tokens, index + 1)
+        else
+            struct[token], index = parseMDLTokensValue(tokens, index + 1)
+        end
+    end
+    return struct, index + 1
+end
+
+local function parseMDLTokensParticleEmitter(tokens, index)
+    local struct = {}
+    local token = tokens[index]
+    struct.name = token
+    index = index + 1
+    assert(tokens[index] == '{')
+    index = index + 1
+    local max = #tokens
+    while index <= max do
+        local token = tokens[index]
+        if token == ',' then
+            index = index + 1
+        elseif token == 'static' then
+            index = index + 1
+        elseif token == '}' then
+            break
+        elseif token == 'Translation'
+        or     token == 'Rotation'
+        or     token == 'Scaling'
+        or     token == 'Visibility' then
+            struct[token], index = parseMDLTokensAnimation(tokens, index + 1)
+        elseif token == 'SegmentColor' then
+            struct[token], index = parseMDLTokensArray(tokens, index + 1, 'Color', parseMDLTokensValue)
+        elseif token == 'Particle' then
+            struct[token], index = parseMDLTokensStruct(tokens, index + 1)
         else
             struct[token], index = parseMDLTokensValue(tokens, index + 1)
         end
@@ -402,6 +473,23 @@ local function parseMDLTokens(tokens)
                 model[token] = {}
             end
             model[token][#model[token]+1], index = parseMDLTokensBone(tokens, index + 1)
+        elseif token == 'Attachment' then
+            if not model[token] then
+                model[token] = {}
+            end
+            model[token][#model[token]+1], index = parseMDLTokensAttachment(tokens, index + 1)
+        elseif token == 'PivotPoints' then
+            model[token], index = parseMDLTokensValueList(tokens, index + 1)
+        elseif token == 'ParticleEmitter' then
+            if not model[token] then
+                model[token] = {}
+            end
+            model[token][#model[token]+1], index = parseMDLTokensParticleEmitter(tokens, index + 1)
+        elseif token == 'ParticleEmitter2' then
+            if not model[token] then
+                model[token] = {}
+            end
+            model[token][#model[token]+1], index = parseMDLTokensParticleEmitter(tokens, index + 1)
         else
             error('Unknown token!')
         end
