@@ -534,7 +534,9 @@ local function encode(model)
 end
 
 local function decode(buf)
-    local model = parseMDLTokens(buf)
+    local tokens, err, pos = mdlParser:match(buf)
+    assert(tokens, 'Parse mdl failed at:' .. tostring(pos))
+    local model = parseMDLTokens(tokens)
     return model
 end
 
