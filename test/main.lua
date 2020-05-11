@@ -1,7 +1,7 @@
 local fs     = require 'bee.filesystem'
 local util   = require 'test.utility'
 local fsu    = require 'test.fs-utility'
-local parser = require 'parser'
+local parser = require 'mdxparser'
 local root   = fs.current_path()
 local mdxDir = root / 'test' / 'mdx'
 local mdlDir = root / 'test' / 'mdl'

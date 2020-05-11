@@ -436,6 +436,34 @@ local function parseMDLTokensParticleEmitter(tokens, index)
     return struct, index + 1
 end
 
+local function parseMDLTokensParticleCamera(tokens, index)
+    local struct = {}
+    local token = tokens[index]
+    struct.name = token
+    index = index + 1
+    assert(tokens[index] == '{')
+    index = index + 1
+    local max = #tokens
+    while index <= max do
+        local token = tokens[index]
+        if token == ',' then
+            index = index + 1
+        elseif token == 'static' then
+            index = index + 1
+        elseif token == '}' then
+            break
+        elseif token == 'Translation'
+        or     token == 'Rotation'
+        or     token == 'Scaling'
+        or     token == 'Visibility' then
+            struct[token], index = parseMDLTokensAnimation(tokens, index + 1)
+        else
+            struct[token], index = parseMDLTokensValue(tokens, index + 1)
+        end
+    end
+    return struct, index + 1
+end
+
 local function parseMDLTokensVersion(tokens, index)
     return tokens[index + 2], index + 3
 end
@@ -490,6 +518,11 @@ local function parseMDLTokens(tokens)
                 model[token] = {}
             end
             model[token][#model[token]+1], index = parseMDLTokensParticleEmitter(tokens, index + 1)
+        elseif token == 'Camera' then
+            if not model[token] then
+                model[token] = {}
+            end
+            model[token][#model[token]+1], index = parseMDLTokensParticleCamera(tokens, index + 1)
         else
             error('Unknown token!')
         end
@@ -497,33 +530,15 @@ local function parseMDLTokens(tokens)
     return model
 end
 
---- 解析 `mdx` 为模型数据
-local function mdxDecode(buf)
+local function encode(model)
 end
 
---- 将模型数据转换为 `mdx` 格式
-local function mdxEncode(model)
-end
-
---- 解析 `mdl` 为模型数据
-local function mdlDecode(buf)
-    local tokens, err, pos = mdlParser:match(buf)
-    assert(tokens, 'Parse mdl failed at:' .. tostring(pos))
-    local model = parseMDLTokens(tokens)
+local function decode(buf)
+    local model = parseMDLTokens(buf)
     return model
 end
 
---- 将模型数据转换为 `mdl` 格式
-local function mdlEncode(model)
-end
-
 return {
-    mdx = {
-        decode = mdxDecode,
-        encode = mdxEncode,
-    },
-    mdl = {
-        decode = mdlDecode,
-        encode = mdlEncode,
-    }
+    encode = encode,
+    decode = decode,
 }
