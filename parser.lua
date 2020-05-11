@@ -80,12 +80,9 @@ local function parseMDLTokensAnimationData(tokens, index)
     index = index + 1
     assert(tokens[index] == ':')
     index = index + 1
-    local value = tokens[index]
-    local data = {
-        time  = time,
-        value = value,
-    }
-    index = index + 1
+    local data = {}
+    data.time = time
+    data.value, index = parseMDLTokensValue(tokens, index)
     local max = #tokens
     while index <= max do
         local token = tokens[index]
@@ -103,7 +100,6 @@ local function parseMDLTokensAnimation(tokens, index)
     local data = {}
     local list = {}
     data.list = list
-    index = index + 1
     local count = tokens[index]
     index = index + 2
     data.type = tokens[index]
@@ -145,7 +141,7 @@ local function parseMDLTokensLayer(tokens, index)
             break
         elseif token == 'Alpha'
         or     token == 'EmissiveGain' then
-            layer[token], index = parseMDLTokensAnimation(tokens, index)
+            layer[token], index = parseMDLTokensAnimation(tokens, index + 1)
         elseif token == 'static' then
             index = index + 1
         else
@@ -172,7 +168,7 @@ local function parseMDLTokensStruct(tokens, index)
         elseif token == '}' then
             break
         else
-            struct[token], index = parseMDLTokensValue(tokens, index)
+            struct[token], index = parseMDLTokensValue(tokens, index + 1)
         end
     end
     return struct, index + 1
@@ -323,6 +319,52 @@ local function parseMDLTokensGeoset(tokens, index)
     return struct, index + 1
 end
 
+local function parseMDLTokensGeosetAnim(tokens, index)
+    local struct = {}
+    index = index + 1
+    local max = #tokens
+    while index <= max do
+        local token = tokens[index]
+        if token == '}' then
+            break
+        elseif token == ',' then
+            index = index + 1
+        elseif token == 'static' then
+            index = index + 1
+        elseif token == 'Alpha' then
+            struct[token], index = parseMDLTokensAnimation(tokens, index + 1)
+        else
+            struct[token], index = parseMDLTokensValue(tokens, index + 1)
+        end
+    end
+    return struct, index + 1
+end
+
+local function parseMDLTokensBone(tokens, index)
+    local struct = {}
+    local token = tokens[index]
+    struct.name = token
+    index = index + 1
+    assert(tokens[index] == '{')
+    index = index + 1
+    local max = #tokens
+    while index <= max do
+        local token = tokens[index]
+        if token == ',' then
+            index = index + 1
+        elseif token == '}' then
+            break
+        elseif token == 'Translation'
+        or     token == 'Rotation'
+        or     token == 'Scaling' then
+            struct[token], index = parseMDLTokensAnimation(tokens, index + 1)
+        else
+            struct[token], index = parseMDLTokensValue(tokens, index + 1)
+        end
+    end
+    return struct, index + 1
+end
+
 local function parseMDLTokensVersion(tokens, index)
     return tokens[index + 2], index + 3
 end
@@ -350,6 +392,16 @@ local function parseMDLTokens(tokens)
                 model[token] = {}
             end
             model[token][#model[token]+1], index = parseMDLTokensGeoset(tokens, index + 1)
+        elseif token == 'GeosetAnim' then
+            if not model[token] then
+                model[token] = {}
+            end
+            model[token][#model[token]+1], index = parseMDLTokensGeosetAnim(tokens, index + 1)
+        elseif token == 'Bone' then
+            if not model[token] then
+                model[token] = {}
+            end
+            model[token][#model[token]+1], index = parseMDLTokensBone(tokens, index + 1)
         else
             error('Unknown token!')
         end
