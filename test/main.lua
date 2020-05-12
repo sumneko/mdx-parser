@@ -25,6 +25,15 @@ for path in fsu.scan(mdlDir) do
     end
 end
 
+-- 测试转换版本
+for path in fsu.scan(mdlDir) do
+    local buf = fsu.loadFile(mdlDir / path)
+    local model = parser.mdl.decode(buf)
+    local newModel = parser.model.convertVersion(model, 800)
+    local newBuf = parser.mdl.encode(newModel)
+    fsu.saveFile(tempDir / (path:stem() .. '_800.mdl'), newBuf)
+end
+
 -- 测试 mdx 转 mdl
 --for path in fsu.scan(mdlDir) do
 --    local mdxPath = mdxDir / (path:stem() .. '.mdx')

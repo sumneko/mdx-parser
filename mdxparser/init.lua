@@ -1,8 +1,16 @@
-local loaded = {}
-local env
+local assert       = assert
+local setmetatable = setmetatable
+local debugGetInfo = debug.getinfo
+local ioOpen       = io.open
+local load         = load
 
+local env = setmetatable({}, { __index = _ENV })
+
+_ENV = nil
+
+local loaded = {}
 local function include(path)
-    local myPath = debug.getinfo(2, 'S').source
+    local myPath = debugGetInfo(2, 'S').source
     if myPath:sub(1, 1) == '@' then
         myPath = myPath:sub(2)
     end
@@ -10,7 +18,7 @@ local function include(path)
     if loaded[newPath] then
         return loaded[newPath]
     end
-    local f = assert(io.open(newPath, 'r'))
+    local f = assert(ioOpen(newPath, 'r'))
     local buf = f:read 'a'
     f:close()
     local init = assert(load(buf, '@' .. newPath, 'bt', env))
@@ -19,11 +27,10 @@ local function include(path)
     return res
 end
 
-env = setmetatable({
-    include = include,
-}, { __index = _ENV })
+env.include = include
 
 return {
-    mdl = include 'mdl.lua',
-    mdx = include 'mdx.lua',
+    mdl            = include 'mdl.lua',
+    mdx            = include 'mdx.lua',
+    model          = include 'model.lua',
 }
