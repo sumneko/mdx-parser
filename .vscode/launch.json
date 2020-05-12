@@ -23,7 +23,7 @@
             "stopOnEntry": false,
             "luaArch": "x86_64",
             "luaVersion": "5.4",
-            "path": "${workspaceFolder}/?.lua;${workspaceFolder}/?/init.lua",
+            "path": "${workspaceFolder}/?.lua;${workspaceFolder}/?/init.lua;${workspaceFolder}/tools/?.lua;${workspaceFolder}/tools/?/init.lua",
             "cpath": "${workspaceFolder}/bin/?.dll;${workspaceFolder}/test/bin/?.dll",
         }
     ]
