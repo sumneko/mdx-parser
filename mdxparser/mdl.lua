@@ -4,11 +4,7 @@ local tonumber     = tonumber
 local type         = type
 local assert       = assert
 local tostring     = tostring
-local error        = error
-local tableSort    = table.sort
 local ipairs       = ipairs
-local osClock      = os.clock
-local print        = print
 local select       = select
 local tableConcat  = table.concat
 local setmetatable = setmetatable
@@ -56,14 +52,13 @@ local mdlParser = l.P {
     Number  = l.C(l.P'-'^-1 * l.R'09'^1 * l.V'Decimal'^-1),
     Decimal = l.P'.' * l.R'09'^0,
     String  = l.C(l.P'"' * (1 - l.P'"')^0 * l.P'"'),
-    Char    = l.R('az', 'AZ', '09', '__'),
     Word    = l.C(l.R('az', 'AZ', '__') * l.R('az', 'AZ', '09', '__')^0),
     Afield  = l.V'Empty' * l.V'Value' * l.V'Empty',
-    Array   = l.Ct(l.Cc'Array' * l.P'{'
+    Array   = l.Ct(l.Cg(l.Cc'Array', 'type') * l.P'{'
                 * (l.V'Afield' * l.V'Comma')^0 * l.V'Afield'^-1
             * l.V'Empty' * l.P'}'),
     Sfield  = l.V'Empty' * (l.V'State' + l.V'Value') * l.V'Empty',
-    Struct  = l.Ct(l.Cc'Struct' * l.P'{'
+    Struct  = l.Ct(l.Cg(l.Cc'Struct', 'type') * l.P'{'
                 * (l.V'Sfield' * l.V'Comma'^-1 + #(1 - l.P'}') * l.T'Unknown')^0
             * l.V'Empty' * l.P'}'),
 }
@@ -103,7 +98,7 @@ local function encodeState(buf, pkey, state, tab)
         if state.value then
             buf[#buf+1] = ' '
             encodeValue(buf, key, state.value, tab)
-            if type(state.value) == 'table' and state.value[1] == 'Struct' then
+            if type(state.value) == 'table' and state.value.type == 'Struct' then
                 isStruct = true
             end
         end
@@ -126,24 +121,24 @@ local function encodeState(buf, pkey, state, tab)
 end
 
 local function encodeTable(buf, key, value, tab)
-    local mode = value[1]
+    local mode = value.type
     if mode == 'Struct' then
         buf[#buf+1] = '{\r\n'
-        for i = 2, #value do
+        for i = 1, #value do
             encodeState(buf, key, value[i], tab + 1)
         end
         buf[#buf+1] = Tab[tab]
         buf[#buf+1] = '}'
     elseif mode == 'Array' then
-        if tonumber(value[2]) then
+        if tonumber(value[1]) then
             if key == 'SkinWeights' then
                 buf[#buf+1] = '{\r\n'
-                for i = 2, #value do
-                    if i % 8 == 2 then
+                for i = 1, #value do
+                    if i % 8 == 1 then
                         buf[#buf+1] = Tab[tab + 1]
                     end
                     encodeValue(buf, key, value[i], tab + 1)
-                    if i % 8 == 1 then
+                    if i % 8 == 0 then
                         buf[#buf+1] = ', \r\n'
                     else
                         buf[#buf+1] = ', '
@@ -158,8 +153,8 @@ local function encodeTable(buf, key, value, tab)
             or     key == 'TailUVAnim'
             or     key == 'TailDecayUVAnim' then
                 buf[#buf+1] = '{'
-                for i = 2, #value do
-                    if i > 2 then
+                for i = 1, #value do
+                    if i > 1 then
                         buf[#buf+1] = ' '
                     end
                     encodeValue(buf, key, value[i], tab)
@@ -170,7 +165,7 @@ local function encodeTable(buf, key, value, tab)
                 buf[#buf+1] = '}'
             elseif key == 'Matrices' then
                 buf[#buf+1] = '{'
-                for i = 2, #value do
+                for i = 1, #value do
                     if #value >= 10 then
                         encodeValue(buf, key, value[i], tab)
                         buf[#buf] = ('% 13s'):format(buf[#buf])
@@ -185,7 +180,7 @@ local function encodeTable(buf, key, value, tab)
                 buf[#buf+1] = ' }'
             else
                 buf[#buf+1] = '{'
-                for i = 2, #value do
+                for i = 1, #value do
                     buf[#buf+1] = ' '
                     encodeValue(buf, key, value[i], tab)
                     if i < #value then
@@ -196,7 +191,7 @@ local function encodeTable(buf, key, value, tab)
             end
         else
             buf[#buf+1] = '{\r\n'
-            for i = 2, #value do
+            for i = 1, #value do
                 buf[#buf+1] = Tab[tab + 1]
                 encodeValue(buf, key, value[i], tab + 1)
                 buf[#buf+1] = ',\r\n'
