@@ -4,6 +4,7 @@ local ipairs       = ipairs
 local pairs        = pairs
 local assert       = assert
 local print        = print
+local tonumber     = tonumber
 
 _ENV = nil
 
@@ -162,7 +163,7 @@ local function setAttribute(model, keys, attribute)
         local tstates = findState(chunk, key, true)
         if tstates then
             for _, tstate in ipairs(tstates) do
-                local oldAttr = tstate.attribute
+                local oldAttr = tstate.attribute or {}
                 local newAttr
                 if type(attribute) == 'function' then
                     newAttr = attribute(oldAttr)
@@ -174,7 +175,7 @@ local function setAttribute(model, keys, attribute)
         else
             local newAttr
             if type(attribute) == 'function' then
-                newAttr = attribute(nil)
+                newAttr = attribute {}
             else
                 newAttr = attribute
             end
@@ -231,15 +232,6 @@ local function convertVersion800(model)
     removeState(newModel, {'Geoset', 'Name'})
     removeState(newModel, {'FaceFX'})
     removeState(newModel, {'BindPose'})
-    local first
-    setValue(newModel, {'Geoset'}, function (obj)
-        if not first then
-            first = obj
-        end
-    end)
-    removeState(newModel, {'Geoset'})
-    setValue(newModel, {'Geoset', 'Vertices'}, function (obj)
-    end)
     return newModel
 end
 
