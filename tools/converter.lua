@@ -10,9 +10,8 @@ mt.__index = mt
 function mt:readFile(filename, input)
     local path = fs.path(filename)
     local stem = (path:parent_path() / path:stem()):string()
-    local nativeDir = fs.path(input) / 
     for _, ext in ipairs {'.dds', '.blp', '.tga'} do
-        local buf = fsu.loadFile(nativeDir / (stem .. ext))
+        local buf = fsu.loadFile(fs.path(input) / (stem .. ext))
         if buf then
             return buf, ext
         end
@@ -39,7 +38,7 @@ function mt:fixImage(newModel, input, output, prefix)
         if converted[image] then
             return converted[image]
         end
-        local buf, ext = self:readFile()
+        local buf, ext = self:readFile(image)
         if not buf then
             converted[image] = filename
             return converted[image]

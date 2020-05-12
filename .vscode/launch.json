@@ -21,10 +21,10 @@
             "name": "转换模型",
             "program": "${workspaceFolder}/tools/转换模型.lua",
             "stopOnEntry": false,
-            "luaArch": "x86_64",
+            "luaArch": "x86",
             "luaVersion": "5.4",
             "path": "${workspaceFolder}/?.lua;${workspaceFolder}/?/init.lua;${workspaceFolder}/tools/?.lua;${workspaceFolder}/tools/?/init.lua",
-            "cpath": "${workspaceFolder}/bin/?.dll;${workspaceFolder}/test/bin/?.dll",
+            "cpath": "${workspaceFolder}/tools/bin/?.dll",
         }
     ]
 }
