@@ -246,6 +246,7 @@ end
 return {
     getValue       = getValue,
     setValue       = setValue,
+    setAttribute   = setAttribute,
     removeState    = removeState,
     convertVersion = convertVersion,
 }
