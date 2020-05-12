@@ -13,7 +13,7 @@
             "luaArch": "x86_64",
             "luaVersion": "5.4",
             "path": "${workspaceFolder}/?.lua;${workspaceFolder}/?/init.lua",
-            "cpath": "${workspaceFolder}/bin/?.dll",
+            "cpath": "${workspaceFolder}/bin/?.dll;${workspaceFolder}/test/bin/?.dll",
         }
     ]
 }
