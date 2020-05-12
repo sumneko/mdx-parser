@@ -31,6 +31,9 @@ end
 
 function mt:fixImage(newModel, input, output, prefix)
     fs.create_directories(fs.path 'temp')
+    if prefix then
+        fs.create_directories(fs.path(output) / prefix)
+    end
     local converted = {}
     local id = 0
     parser.model.setValue(newModel, {'Textures', 'Bitmap', 'Image'}, function (filename)
@@ -38,7 +41,7 @@ function mt:fixImage(newModel, input, output, prefix)
         if converted[image] then
             return converted[image]
         end
-        local buf, ext = self:readFile(image)
+        local buf, ext = self:readFile(image, input)
         if not buf then
             converted[image] = filename
             return converted[image]
@@ -46,7 +49,7 @@ function mt:fixImage(newModel, input, output, prefix)
         local stem
         if prefix then
             id = id + 1
-            stem = (fs.path(prefix) / tonumber(id)):string():gsub('/', '\\')
+            stem = (fs.path(prefix) / tostring(id)):string():gsub('/', '\\')
         else
             stem = fs.path(image):stem():string():gsub('/', '\\')
         end
@@ -58,7 +61,7 @@ function mt:fixImage(newModel, input, output, prefix)
                 tempPath,
             }
             p:wait()
-            local newImage = stem .. ext
+            local newImage = stem .. '.blp'
             fs.copy_file(tempPath:parent_path() / (tempPath:stem() .. '00.tga'), fs.path(output) / newImage, true)
             converted[image] = '"' .. newImage .. '"'
         else
@@ -80,9 +83,17 @@ function mt:convert(input, output, version, prefix)
     if not buf then
         error('Cannot open file:' .. tostring(input))
     end
+    fs.create_directories(fs.path(output))
     local model = parser.mdl.decode(buf)
     local newModel = parser.model.convertVersion(model, version)
     self:fixImage(newModel, input, output, prefix)
+    local newBuf = parser.mdl.encode(newModel)
+    if prefix then
+        fs.create_directories(fs.path(output) / prefix)
+        fsu.saveFile(fs.path(output) / prefix / 'model.mdl', newBuf)
+    else
+        fsu.saveFile(fs.path(output) / (input:stem():string() .. '.mdl'), newBuf)
+    end
 end
 
 return function (war3path)
