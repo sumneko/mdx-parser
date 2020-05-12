@@ -63,7 +63,8 @@ function mt:fixImage(newModel, input, output, prefix)
             p:wait()
             local newImage = stem .. '.tga'
             fs.copy_file(tempPath:parent_path() / (tempPath:stem() .. '00.tga'), fs.path(output) / newImage, true)
-            converted[image] = '"' .. newImage:gsub('%d+%.tga', '1.tga') .. '"'
+            fs.copy_file(tempPath, fs.path(output) / stem .. '.dds', true)
+            converted[image] = '"' .. newImage .. '"'
         else
             local newImage = stem .. ext
             fsu.saveFile(fs.path(output) / newImage, buf)

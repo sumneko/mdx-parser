@@ -178,6 +178,15 @@ local function encodeTable(buf, key, value, tab)
                     end
                 end
                 buf[#buf+1] = ' }'
+            elseif key == 'VertexGroup' then
+                buf[#buf+1] = '{\r\n'
+                for i = 1, #value do
+                    buf[#buf+1] = Tab[tab + 1]
+                    encodeValue(buf, key, value[i], tab + 1)
+                    buf[#buf+1] = ',\r\n'
+                end
+                buf[#buf+1] = Tab[tab]
+                buf[#buf+1] = '}'
             else
                 buf[#buf+1] = '{'
                 for i = 1, #value do

@@ -229,6 +229,23 @@ local function convertVersion800(model)
     removeState(newModel, {'Geoset', 'Name'})
     removeState(newModel, {'FaceFX'})
     removeState(newModel, {'BindPose'})
+    local verticeNum = {}
+    local index = 0
+    setAttribute(newModel, {'Geoset', 'Vertices'}, function (attr)
+        index = index + 1
+        verticeNum[index] = attr[1]
+        return attr
+    end)
+    local index = 0
+    setValue(newModel, {'Geoset', 'VertexGroup'}, function (obj)
+        index = index + 1
+        if #obj == 0 then
+            for i = 1, verticeNum[index] do
+                obj[i] = 0
+            end
+        end
+        return obj
+    end)
     return newModel
 end
 
